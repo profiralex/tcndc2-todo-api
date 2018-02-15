@@ -29,7 +29,7 @@ app.get('/todos', (req, res) => {
   Todo.find()
     .then(data => {
       res.send({
-        data,
+        todos: data,
       });
     })
     .catch(e => {
