@@ -20,7 +20,7 @@ app.post('/todos', (req, res) => {
   todo
     .save()
     .then(data => {
-      res.send(data);
+      res.send({ todo });
     })
     .catch(e => {
       res.status(400).send(e);
@@ -30,9 +30,7 @@ app.post('/todos', (req, res) => {
 app.get('/todos', (req, res) => {
   Todo.find()
     .then(data => {
-      res.send({
-        todos: data,
-      });
+      res.send({ todos: data });
     })
     .catch(e => {
       res.status(500).send(e);
