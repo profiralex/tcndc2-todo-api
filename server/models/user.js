@@ -73,7 +73,7 @@ UserSchema.pre('save', function(next) {
   }
 
   bcrypt
-    .hash(user.password, 12)
+    .hash(user.password, 10)
     .then(hash => {
       user.password = hash;
       next();
