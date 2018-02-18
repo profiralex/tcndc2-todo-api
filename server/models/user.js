@@ -45,7 +45,7 @@ UserSchema.methods.generateAuthToken = async function() {
   const user = this;
   const access = 'auth';
   const token = jwt
-    .sign({ _id: user._id.toHexString(), access }, 'abc123')
+    .sign({ _id: user._id.toHexString(), access }, process.env.JWT_SECRET)
     .toString();
 
   user.tokens = user.tokens.concat([{ access, token }]);
@@ -65,7 +65,7 @@ UserSchema.methods.removeToken = async function(token) {
 
 UserSchema.statics.findByToken = async function(token) {
   const User = this;
-  const decoded = jwt.verify(token, 'abc123');
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
   return await User.findOne({
     _id: decoded._id,
