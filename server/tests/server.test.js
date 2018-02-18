@@ -182,10 +182,15 @@ describe('POST /users', () => {
         expect(res.body.user._id).toExist();
         expect(res.body.user.email).toBe(email);
       })
-      .then(() => User.findOne({ email }))
-      .then(user => {
-        expect(user).toExist();
-        expect(user.password).toNotBe(password);
+      .then(res => {
+        return User.findOne({ email }).then(user => {
+          expect(user).toExist();
+          expect(user.password).toNotBe(password);
+          expect(user.tokens[0]).toInclude({
+            access: 'auth',
+            token: res.headers['x-auth'],
+          });
+        });
       });
   });
 
@@ -198,6 +203,55 @@ describe('POST /users', () => {
   it('should not craete user if email in use', () =>
     request(app)
       .post('/users')
-      .send({ email: users[0].email, password: users[0].password })
+      .send({ email: users[0].email, password: 'asdafasfsdfsadfs' })
       .expect(400));
+});
+
+describe('POST /users/login', () => {
+  it('should login user and return auth token', () => {
+    return request(app)
+      .post('/users/login')
+      .send({ email: users[1].email, password: users[1].password })
+      .expect(200)
+      .expect(res => {
+        expect(res.headers['x-auth']).toExist();
+        expect(res.body.user._id).toBe(users[1]._id.toHexString());
+        expect(res.body.user.email).toBe(users[1].email);
+      })
+      .then(res => {
+        return User.findById(users[1]._id).then(user => {
+          expect(user.tokens[0]).toInclude({
+            access: 'auth',
+            token: res.headers['x-auth'],
+          });
+        });
+      });
+  });
+
+  it('should reject invalid email', () => {
+    return request(app)
+      .post('/users/login')
+      .send({ email: 'doesnotexist@example.com', password: 'test1234' })
+      .expect(400)
+      .expect(res => {
+        expect(res.headers['x-auth']).toNotExist();
+        expect(res.body).toEqual({});
+      });
+  });
+
+  it('should reject invalid password', () => {
+    return request(app)
+      .post('/users/login')
+      .send({ email: users[1].email, password: 'test1234' })
+      .expect(400)
+      .expect(res => {
+        expect(res.headers['x-auth']).toNotExist();
+        expect(res.body).toEqual({});
+      })
+      .then(res => {
+        return User.findById(users[1]._id).then(user => {
+          expect(user.tokens.length).toBe(0);
+        });
+      });
+  });
 });
