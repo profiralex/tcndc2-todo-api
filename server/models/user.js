@@ -54,6 +54,15 @@ UserSchema.methods.generateAuthToken = async function() {
   return token;
 };
 
+UserSchema.methods.removeToken = async function(token) {
+  const user = this;
+  return await user.update({
+    $pull: {
+      tokens: { token },
+    },
+  });
+};
+
 UserSchema.statics.findByToken = async function(token) {
   const User = this;
   const decoded = jwt.verify(token, 'abc123');
