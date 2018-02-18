@@ -255,3 +255,16 @@ describe('POST /users/login', () => {
       });
   });
 });
+
+describe('DELETE /users/me/token', () => {
+  it('should remove auth token on logout', () => {
+    return request(app)
+      .delete('/users/me/token')
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(200)
+      .then(() => User.findById(users[0]._id))
+      .then(user => {
+        expect(user.tokens.length).toBe(0);
+      });
+  });
+});
