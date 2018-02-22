@@ -11,33 +11,32 @@ beforeEach(populateTodos);
 beforeEach(populateUsers);
 
 describe('POST /todos', () => {
-  it('should create a new todo', () => {
+  it('should create a new todo', async () => {
     const text = 'Test todo text';
-    return request(app)
+    await request(app)
       .post('/todos')
       .set('x-auth', users[0].tokens[0].token)
       .send({ text })
       .expect(200)
       .expect(res => {
         expect(res.body.todo.text).toBe(text);
-      })
-      .then(_ => Todo.find({ text }))
-      .then(todos => {
-        expect(todos.length).toBe(1);
-        expect(todos[0].text).toBe(text);
       });
+
+    const todos = await Todo.find({ text });
+    expect(todos.length).toBe(1);
+    expect(todos[0].text).toBe(text);
   });
 
-  it('should not create todo with invalid body data', () =>
-    request(app)
+  it('should not create todo with invalid body data', async () => {
+    await request(app)
       .post('/todos')
       .set('x-auth', users[0].tokens[0].token)
       .send({})
-      .expect(400)
-      .then(_ => Todo.find({}))
-      .then(todos => {
-        expect(todos.length).toBe(2);
-      }));
+      .expect(400);
+
+    const todos = await Todo.find({});
+    expect(todos.length).toBe(2);
+  });
 });
 
 describe('GET /todos', () => {
@@ -81,54 +80,51 @@ describe('GET /todos:id', () => {
 });
 
 describe('DELETE /todos:id', () => {
-  it('should remove a todo', () => {
+  it('should remove a todo', async () => {
     const hexId = todos[1]._id.toHexString();
-    return request(app)
+    await request(app)
       .delete(`/todos/${hexId}`)
       .set('x-auth', users[1].tokens[0].token)
       .expect(200)
       .expect(res => {
         expect(res.body.todo._id).toBe(hexId);
-      })
-      .then(_ => Todo.findById(hexId))
-      .then(todo => {
-        expect(todo).toBeFalsy();
       });
+
+    const todo = await Todo.findById(hexId);
+    expect(todo).toBeFalsy();
   });
 
-  it('should not remove a todo created by other user', () => {
+  it('should not remove a todo created by other user', async () => {
     const hexId = todos[1]._id.toHexString();
-    return request(app)
+    await request(app)
       .delete(`/todos/${hexId}`)
       .set('x-auth', users[0].tokens[0].token)
-      .expect(404)
-      .then(_ => Todo.find({}))
-      .then(todos => {
-        expect(todos.length).toBe(2);
-      });
+      .expect(404);
+
+    const foundTodos = await Todo.find({});
+    expect(foundTodos.length).toBe(2);
   });
 
-  it('should return 404 if todo not found', () => {
+  it('should return 404 if todo not found', async () => {
     const hexId = new ObjectID().toHexString();
-    return request(app)
+    await request(app)
       .delete(`/todos/${hexId}`)
       .set('x-auth', users[1].tokens[0].token)
-      .expect(404)
-      .then(_ => Todo.find({}))
-      .then(todos => {
-        expect(todos.length).toBe(2);
-      });
+      .expect(404);
+
+    const foundTodos = await Todo.find({});
+    expect(foundTodos.length).toBe(2);
   });
 
-  it('should return 404 if id is invalid', () =>
-    request(app)
+  it('should return 404 if id is invalid', async () => {
+    await request(app)
       .delete(`/todos/1234`)
       .set('x-auth', users[1].tokens[0].token)
-      .expect(404)
-      .then(_ => Todo.find({}))
-      .then(todos => {
-        expect(todos.length).toBe(2);
-      }));
+      .expect(404);
+
+    const foundTodos = await Todo.find({});
+    expect(foundTodos.length).toBe(2);
+  });
 });
 
 describe('PATCH /todos/:id', () => {
@@ -136,7 +132,7 @@ describe('PATCH /todos/:id', () => {
     const hexId = todos[0]._id.toHexString();
     const text = 'New updated text 1';
 
-    request(app)
+    return request(app)
       .patch(`/todos/${hexId}`)
       .set('x-auth', users[0].tokens[0].token)
       .send({ text, completed: true })
@@ -212,10 +208,10 @@ describe('GET /users/me', () => {
 });
 
 describe('POST /users', () => {
-  it('should create a user', () => {
+  it('should create a user', async () => {
     const email = 'example@email.com';
     const password = 'test1234';
-    return request(app)
+    const res = await request(app)
       .post('/users')
       .send({ email, password })
       .expect(200)
@@ -223,17 +219,15 @@ describe('POST /users', () => {
         expect(res.headers['x-auth']).toBeTruthy();
         expect(res.body.user._id).toBeTruthy();
         expect(res.body.user.email).toBe(email);
-      })
-      .then(res => {
-        return User.findOne({ email }).then(user => {
-          expect(user).toBeTruthy();
-          expect(user.password).not.toBe(password);
-          expect(user.toObject().tokens[0]).toMatchObject({
-            access: 'auth',
-            token: res.headers['x-auth'],
-          });
-        });
       });
+
+    const user = await User.findOne({ email });
+    expect(user).toBeTruthy();
+    expect(user.password).not.toBe(password);
+    expect(user.toObject().tokens[0]).toMatchObject({
+      access: 'auth',
+      token: res.headers['x-auth'],
+    });
   });
 
   it('should return validation errors if request invalid', () =>
@@ -250,8 +244,8 @@ describe('POST /users', () => {
 });
 
 describe('POST /users/login', () => {
-  it('should login user and return auth token', () => {
-    return request(app)
+  it('should login user and return auth token', async () => {
+    const res = await request(app)
       .post('/users/login')
       .send({ email: users[1].email, password: users[1].password })
       .expect(200)
@@ -259,15 +253,13 @@ describe('POST /users/login', () => {
         expect(res.headers['x-auth']).toBeTruthy();
         expect(res.body.user._id).toBe(users[1]._id.toHexString());
         expect(res.body.user.email).toBe(users[1].email);
-      })
-      .then(res => {
-        return User.findById(users[1]._id).then(user => {
-          expect(user.toObject().tokens[1]).toMatchObject({
-            access: 'auth',
-            token: res.headers['x-auth'],
-          });
-        });
       });
+
+    const user = await User.findById(users[1]._id);
+    expect(user.toObject().tokens[1]).toMatchObject({
+      access: 'auth',
+      token: res.headers['x-auth'],
+    });
   });
 
   it('should reject invalid email', () => {
@@ -281,32 +273,29 @@ describe('POST /users/login', () => {
       });
   });
 
-  it('should reject invalid password', () => {
-    return request(app)
+  it('should reject invalid password', async () => {
+    const res = await request(app)
       .post('/users/login')
       .send({ email: users[1].email, password: 'test1234' })
       .expect(400)
       .expect(res => {
         expect(res.headers['x-auth']).toBeFalsy();
         expect(res.body).toEqual({});
-      })
-      .then(res => {
-        return User.findById(users[1]._id).then(user => {
-          expect(user.tokens.length).toBe(1);
-        });
       });
+
+    const user = await User.findById(users[1]._id);
+    expect(user.tokens.length).toBe(1);
   });
 });
 
 describe('DELETE /users/me/token', () => {
-  it('should remove auth token on logout', () => {
-    return request(app)
+  it('should remove auth token on logout', async () => {
+    await request(app)
       .delete('/users/me/token')
       .set('x-auth', users[0].tokens[0].token)
-      .expect(200)
-      .then(() => User.findById(users[0]._id))
-      .then(user => {
-        expect(user.tokens.length).toBe(0);
-      });
+      .expect(200);
+
+    const user = await User.findById(users[0]._id);
+    expect(user.tokens.length).toBe(0);
   });
 });
