@@ -93,21 +93,20 @@ UserSchema.statics.hashPassword = async function(password) {
   return await bcrypt.hash(password, rounds);
 };
 
-UserSchema.pre('save', function(next) {
+UserSchema.pre('save', async function(next) {
   const user = this;
 
   if (!user.isModified('password')) {
     return next();
   }
 
-  User.hashPassword(user.password)
-    .then(hash => {
-      user.password = hash;
-      next();
-    })
-    .catch(e => {
-      next(e);
-    });
+  try {
+    const hash = await User.hashPassword(user.password);
+    user.password = hash;
+    next();
+  } catch (e) {
+    next(e);
+  }
 });
 
 const User = mongoose.model('User', UserSchema);

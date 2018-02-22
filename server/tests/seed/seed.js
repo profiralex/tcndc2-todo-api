@@ -50,13 +50,16 @@ const todos = [
   },
 ];
 
-const populateTodos = () => Todo.remove({}).then(() => Todo.insertMany(todos));
-const populateUsers = () =>
-  User.remove({}).then(() => {
-    const userOnePromise = new User(users[0]).save();
-    const userTwoPromise = new User(users[1]).save();
-    return Promise.all([userOnePromise, userTwoPromise]);
-  });
+const populateTodos = async () => {
+  await Todo.remove({});
+  await Todo.insertMany(todos);
+};
+
+const populateUsers = async () => {
+  await User.remove({});
+  await new User(users[0]).save();
+  await new User(users[1]).save();
+};
 
 module.exports = {
   todos,
